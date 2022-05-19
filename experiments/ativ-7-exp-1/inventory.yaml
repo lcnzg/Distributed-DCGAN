@@ -5,5 +5,5 @@ cloud:
   hosts:
     # O grupo cloud conterá a máquina "compute01"
     compute01:
-        ansible_host: XXXXX  # Substitua com o  IP Publico ou DNS da máquina remota
+        ansible_host: 3.95.196.59  # Substitua com o  IP Publico ou DNS da máquina remota
         ansible_user: ubuntu
