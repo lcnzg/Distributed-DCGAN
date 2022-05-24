@@ -43,6 +43,66 @@
   #   Adicione suas tasks a partir daqui..      #
   ###############################################
 
+  # Instalar pacotes
+  - name: "Task 5: Instalar pacotes para executar o DCGAN"
+    become: true
+    apt:
+      pkg:
+      - docker.io
+      - python3-docker
+      - nfs-common
+      update_cache: yes
+
+  - name: "Task 6: Criar diretório para montagem do EFS"
+    file:
+      path: "{{ efs_mount_point }}"
+      state: directory
+      mode: 0755
+
+  - name: "Task 7: Montar diretório EFS"
+    become: true
+    mount:
+      name: "{{ efs_mount_point }}"
+      src: "{{ efs_host }}:/"
+      fstype: nfs4
+      opts: nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport
+      state: mounted
+
+  - name: "Task 8: Abrir permissões do diretório EFS"
+    become: true
+    file:
+      path: "{{ efs_mount_point }}"
+      recurse: true
+      mode: '0777'
+    run_once: true
+
+  - name: "Task 9: Clonar o repositório Distributed-DCGAN do GitHub"
+    git:
+      repo: https://github.com/eborin/Distributed-DCGAN.git
+      dest: "{{ user_dir }}/Distributed-DCGAN"
+    run_once: true
+
+  - name: "Task 10: Criar diretório de saída da DCGAN"
+    become: true
+    file:
+      path: "{{ user_dir }}/Distributed-DCGAN/output/cluster-{{ ansible_play_hosts | length }}"
+      state: directory
+      mode: 0777
+    run_once: true
+
+  - name: "Task 11: Criar a imagem Docker da DCGAN"
+    docker_image:
+      source: build
+      build:
+        path: "{{ user_dir }}/Distributed-DCGAN"
+      name: dist_dcgan
+    async: 600
+
+  - name: "Task 12: Executar a DCGAN"
+    ansible.builtin.shell: docker run --network=host --rm -e HOMEDIR=$(pwd) -w $(pwd) -v={{ cifar_data_dir }}:{{ cifar_data_dir }} -v=$(pwd):$(pwd) dist_dcgan:latest python -m torch.distributed.launch --nproc_per_node=1 --nnodes={{ ansible_play_hosts | length }} --node_rank={{ node_rank }} --master_addr="{{ hostvars['node0'].ansible_host }}" --master_port=1234 dist_dcgan.py --dataset cifar10 --dataroot {{ cifar_data_dir }} --image_size 64 --batch_size 128 --out_folder {{ results_dir }} --test_data --num_epochs 2 --max_workers 1 > {{ results_dir }}/output-{{ node_rank }}.txt
+    args:
+      chdir: "{{ user_dir }}/Distributed-DCGAN"
+    async: 600
 
 
   ###############################################
