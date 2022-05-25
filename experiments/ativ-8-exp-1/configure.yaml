@@ -80,6 +80,9 @@
     git:
       repo: https://github.com/eborin/Distributed-DCGAN.git
       dest: "{{ user_dir }}/Distributed-DCGAN"
+      clone: yes
+      update: yes
+      force: yes
     run_once: true
 
   - name: "Task 10: Criar diretório de saída da DCGAN"
@@ -102,7 +105,7 @@
     ansible.builtin.shell: docker run --network=host --rm -e HOMEDIR=$(pwd) -w $(pwd) -v={{ cifar_data_dir }}:{{ cifar_data_dir }} -v=$(pwd):$(pwd) dist_dcgan:latest python -m torch.distributed.launch --nproc_per_node=1 --nnodes={{ ansible_play_hosts | length }} --node_rank={{ node_rank }} --master_addr="{{ hostvars['node0'].ansible_host }}" --master_port=1234 dist_dcgan.py --dataset cifar10 --dataroot {{ cifar_data_dir }} --image_size 64 --batch_size 128 --out_folder {{ results_dir }} --test_data --num_epochs 2 --max_workers 1 > {{ results_dir }}/output-{{ node_rank }}.txt
     args:
       chdir: "{{ user_dir }}/Distributed-DCGAN"
-    async: 600
+    async: 1200
 
 
   ###############################################
